@@ -50,6 +50,18 @@ class LanDevice(IOTPlugin):
         return self.raw_data.get("model", "LAN device")
 
 
+class LanPlugin:
+    def scan(self):
+        for d in scan_lan():
+            yield d
+
+    def get_device(self, ip):
+        for device in self.scan():
+            if device.host == ip:
+                return device
+        return None
+
+
 if __name__ == "__main__":
     from pprint import pprint
     for host in scan_lan():

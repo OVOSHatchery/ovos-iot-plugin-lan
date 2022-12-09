@@ -50,7 +50,7 @@ def required(requirements_file):
                 if pkg.strip() and not pkg.startswith("#")]
 
 
-PLUGIN_ENTRY_POINT = 'ovos-iot-plugin-lan=ovos_iot_plugin_lan:lanPlugin'
+PLUGIN_ENTRY_POINT = 'ovos-iot-plugin-lan=ovos_iot_plugin_lan:LanPlugin'
 setup(
     name='ovos-iot-plugin-lan',
     version=get_version(),
