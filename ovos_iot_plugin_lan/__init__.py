@@ -1,8 +1,9 @@
 import socket
 import sys
+import time
 
 import nmap
-from ovos_plugin_manager.templates.iot import IOTDevicePlugin, IOTScannerPlugin
+from ovos_PHAL_plugin_commonIOT.opm.base import Sensor, IOTScannerPlugin
 
 
 # Get your local network IP address. e.g. 192.168.178.X
@@ -15,27 +16,19 @@ def get_lan_ip():
         sys.exit(e.errno)
 
 
-class LanDevice(IOTDevicePlugin):
+class LanDevice(Sensor):
     def __init__(self, device_id, host, name="generic lan device", raw_data=None):
         device_id = device_id or f"lan:{host}"
         raw_data = raw_data or {"name": name, "description": "local network device"}
         super().__init__(device_id, host, name, raw_data)
+        self.ttl = self.raw_data.get("keeptime", 30)
 
     @property
-    def as_dict(self):
-        return {
-            "host": self.host,
-            "name": self.name,
-            "model": self.product_model,
-            "device_type": "local network device",
-            "device_id": self.device_id,
-            "state": self.is_on,
-            "raw": self.raw_data
-        }
-
-    @property
-    def product_model(self):
-        return self.raw_data.get("model", "LAN device")
+    def is_on(self):
+        # if seen in last 30 seconds, report online
+        if time.time() - self.raw_data.get("last_seen", 0) > self.ttl:
+            return False
+        return True
 
 
 class LanPlugin(IOTScannerPlugin):
@@ -45,19 +38,13 @@ class LanPlugin(IOTScannerPlugin):
         scanner.scan(hosts=hosts, arguments="-sn")
 
         for ip in scanner.all_hosts():
-            name = scanner[ip].hostname()
+            name = self.aliases.get(ip) or scanner[ip].hostname() or "unknown"
             device_id = f"{ip}:{name}"
-            yield LanDevice(device_id, ip, name, scanner[ip])
+            yield LanDevice(device_id, ip, name,
+                            raw_data=scanner[ip])
 
     def get_device(self, ip):
         for device in self.scan():
             if device.host == ip:
                 return device
         return None
-
-
-if __name__ == "__main__":
-    from pprint import pprint
-
-    for host in LanPlugin().scan():
-        pprint(host.as_dict)
